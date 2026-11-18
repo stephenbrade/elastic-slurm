@@ -1,0 +1,145 @@
+{
+ "_comment": "EXAMPLE (CSAIL, from 2026-11-18). Copy to sites/csail.json, replace /data/hai-res/<you> with your dirs, set \"mail\" to your address (optional), and check slots/accounts/QoS against sacctmgr.",
+ "tag": "csail",
+ "root": "/data/hai-res/<you>/csail_lb/elastic_runs",
+ "python": "/data/hai-res/<you>/uv/python/cpython-3.11.15-linux-x86_64-gnu/bin/python3",
+ "cpu_job": [
+  "-A",
+  "hai-res",
+  "-p",
+  "tig-cpu",
+  "--qos=tig-main"
+ ],
+ "slurm_mail": false,
+ "export_via_env": true,
+ "watchdog_log": "/data/hai-res/<you>/csail_lb/elastic_runs/_watchdog/%j.out",
+ "slurm": {
+  "account": "hai-res",
+  "partition": "hai-res-l40s",
+  "qos": "hai-res-main",
+  "constraint": null,
+  "time": "23:00:00",
+  "cpus_per_gpu": 12,
+  "mem_per_gpu_gb": 64,
+  "exclusive_multinode": false,
+  "multinode_constraint": "[holyoke|stata]"
+ },
+ "slots": {
+  "hai-l40s": {
+   "partition": "hai-res-l40s",
+   "account": "hai-res",
+   "qos": "hai-res-main",
+   "gres": "l40s"
+  },
+  "hai-l40s-x": {
+   "partition": "hai-res-l40s",
+   "account": "hai-res",
+   "qos": "hai-res-extended",
+   "gres": "l40s"
+  },
+  "hai-l40s-low": {
+   "partition": "hai-res-l40s",
+   "account": "hai-res",
+   "qos": "hai-res-low",
+   "gres": "l40s"
+  },
+  "vs-h100": {
+   "partition": "vision-shared-h100",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "h100",
+   "multinode_exclude": [
+    "andreas-h100-1",
+    "agrawal-h100-1"
+   ]
+  },
+  "vs-h200": {
+   "partition": "vision-shared-h200",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "h200"
+  },
+  "vs-a100": {
+   "partition": "vision-shared-a100",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "a100",
+   "multinode_exclude": [
+    "agrawal-a100-1",
+    "freeman-a100-1"
+   ]
+  },
+  "vs-l40s": {
+   "partition": "vision-shared-l40s",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "l40s"
+  },
+  "vs-a6000": {
+   "partition": "vision-shared-a6000",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "a6000"
+  },
+  "vs-6000ada": {
+   "partition": "vision-shared-rtx6000ada",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "rtx_6000_ada",
+   "max_mem_per_gpu_gb": 28
+  },
+  "vs-3090": {
+   "partition": "vision-shared-rtx3090",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "rtx_3090",
+   "max_mem_per_gpu_gb": 32
+  },
+  "vs-v100": {
+   "partition": "vision-shared-v100",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "v100",
+   "max_cpus_per_gpu": 8,
+   "max_mem_per_gpu_gb": 56,
+   "multinode_exclude": [
+    "agrawal-v100-1"
+   ]
+  },
+  "cs-h200": {
+   "partition": "csail-shared-h200",
+   "account": "csail",
+   "qos": "lab-free",
+   "gres": "h200",
+   "multinode_exclude": [
+    "quanta-h200-1"
+   ]
+  },
+  "cs-l40s": {
+   "partition": "csail-shared-l40s",
+   "account": "csail",
+   "qos": "lab-free",
+   "gres": "l40s"
+  },
+  "vs-titanrtx": {
+   "partition": "vision-shared-titanrtx",
+   "account": "hai-res",
+   "qos": "lab-free",
+   "gres": "titan_rtx",
+   "max_cpus_per_gpu": 8,
+   "max_mem_per_gpu_gb": 56,
+   "multinode_exclude": [
+    "freeman-titanrtx-1",
+    "freeman-titanrtx-2"
+   ]
+  }
+ },
+ "_comment_2026_11_17": "Step 0: multi-node shapes are NOT --exclusive here (shared nodes are almost never fully idle) and ask for one building ('[holyoke|stata]' matching-OR: all nodes in the same one). max_cpus_per_gpu / max_mem_per_gpu_gb cap the run's per-GPU CPU/RAM on slots whose nodes are smaller (V100 / 2080 Ti / Titan RTX: 80 CPUs + ~500 GB per 8 GPUs; isola-ada6000-1 220 GB per 7; torralba-3090 250 GB per 7). vs-titanrtx (24 GB) is Turing: no native bf16, so they are for smokes / small jobs, not the SA3 trainers. vision-shared-rtx2080ti is NOT a slot: torch 2.7.1+cu126 cannot initialise CUDA on its nodes (driver 580, 'CUDA unknown error' / error 804), tested on gpu19-1/2.drl and isola-2080ti-1..4.",
+ "gpu_count_preflight": true,
+ "_comment_gpu_preflight": "2026-11-17: every job (single-node too) checks torch.cuda.device_count() == allocated GPUs per node before training; a node that fails is excluded (bad_node) and the job re-races. gpu20-2.drl (Titan RTX) shows one GPU fewer than allocated; the 2080 Ti nodes fail CUDA init entirely.",
+ "policy": {
+  "shape_backoff": true
+ },
+ "_comment_policy": "2026-11-17: policy defaults for every CSAIL run. shape_backoff: a job that fails with no checkpoint progress is charged to its shape (backoff 1 h, doubling to 6 h, after 2 in a row), not to the run; 8 in a row on any shapes still halt.",
+ "_comment_multinode": "2026-11-17 step 0: NCCL inter-node = RoCE (NET/IB, mlx5) only between nodes on the same 128.30.x /24 (203: vision-shared h200/l40s/beery-a100/andreas-h100; 204: aia/khattab csail-shared-h200; 195: agrawal/freeman/isola/torralba). Across subnets NCCL fails at init ('Could not find NET with id 0', beery-a100-1 + freeman-a100-1); nodes without an RDMA NIC (agrawal-a100-1, agrawal-h100-1, agrawal-v100-1) force sockets, 0.16 GB/s busbw. multinode_exclude keeps each slot's multi-node shapes on one RoCE subnet."
+}
